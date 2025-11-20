@@ -1,13 +1,6 @@
 from typing import Any
 
-STAT_KEYS = {
-    "hp",
-    "attack",
-    "defense",
-    "special-attack",
-    "special-defense",
-    "speed",
-}
+from app.schemas.pokemon import STAT_KEYS
 
 
 def _extract_stats(raw_stats: list[dict[str, Any]]) -> dict[str, int]:
@@ -17,7 +10,6 @@ def _extract_stats(raw_stats: list[dict[str, Any]]) -> dict[str, int]:
     :param raw_stats: a list of stat objects from PokeAPI
 
     :return: dict with canonical stat keys and integer values
-    :raises: None
     """
     stats: dict[str, int] = {k: 0 for k in STAT_KEYS}
     for item in raw_stats or []:
@@ -35,7 +27,6 @@ def sanitize_pokemon_data(raw: dict[str, Any]) -> dict[str, Any]:
     :param raw: a dict with the raw PokeAPI pokemon payload
 
     :return: A normalized dict
-    :raises: None
     """
     name = str(raw.get("name", "")).lower()
     types = [t["type"]["name"].lower() for t in (raw.get("types") or [])]
