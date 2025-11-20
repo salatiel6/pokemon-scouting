@@ -15,9 +15,6 @@ from app.models.pokemon import Pokemon
 class IngestService:
     """
     Service responsible for fetching, transforming and persisting Pokemon data.
-
-    :return: None
-    :raises: None
     """
 
     def __init__(self, base_url: str | None = None) -> None:
@@ -27,7 +24,6 @@ class IngestService:
         :param base_url: Optional PokeAPI base URL; defaults to app config
 
         :return: None
-        :raises: None
         """
         if base_url is None:
             base_url = current_app.config.get("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
@@ -39,10 +35,10 @@ class IngestService:
 
         :param names: an iterable of Pokemon names
 
-        :return: Summary dict: {"ok": [names], "not_found": [names], "errors": [{name, error}]}
-        :raises: None
+        :return: Summary dict
         """
         results: dict[str, Any] = {"ok": [], "not_found": [], "errors": []}
+
         for name in names:
             try:
                 raw = self.client.get_pokemon_by_name(name)
@@ -55,6 +51,7 @@ class IngestService:
             except Exception as e:
                 logger.error(f"Error ingesting Pokemon {name}: {e}")
                 results["errors"].append({"name": name, "error": str(e)})
+
         db.session.commit()
         return results
 
@@ -66,9 +63,7 @@ class IngestService:
         :param data: a dict produced by sanitize_pokemon_data()
 
         :return: None
-        :raises: None
         """
-        # Upsert by unique name (PokeAPI canonical slug)
         p = Pokemon.query.filter_by(name=data["name"]).one_or_none()
         if not p:
             p = Pokemon()
