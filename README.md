@@ -1,30 +1,60 @@
 # Pokemon Scouting
 
-> Important for evaluators: How I used AI to complete the case?
->
-> Please check the Mental Map for the full development journey with AI and decisions: [docs/mental_map.md](docs/mental_map.md)
+## How I used AI to complete the case?
 
-This is a minimal Flask application that ingests Pokemon data from PokeAPI, stores it in a local SQLite database using SQLAlchemy, and exposes simple HTTP endpoints to manage and query the data.
+> Important for evaluators: Please check the Mental Map for the full development journey and decisions: [docs/mental_map.md](docs/mental_map.md)
+
+This is a minimal Flask application that ingests Pokemon data from PokeAPI, 
+stores it in a local SQLite database using SQLAlchemy, 
+and exposes simple HTTP endpoints to manage and query the data.
 
 Key design decisions (kept intentionally simple):
 - Minimal project structure with only two top-level folders: app/ and tests/ (tests mirror the app structure).
 - Initial Pokemon list is loaded from a CSV file.
 - An endpoint allows adding more Pokemon after the initial load.
-- No blueprints, simple route registration.
 - Pydantic for request/response schemas.
 - Global JSON error handlers and request/response logging middlewares.
-- Unit tests included and CI workflow (GitHub Actions) running pytest on push/PR.
+- Unit tests included and CI workflow running pytest on push/PR.
 
-Requirements
-- Python 3.11+
-- Install dependencies: `pip install -r requirements.txt`
+
+## How To Run Locally
+Requirements:
+- [Git](https://git-scm.com/downloads)
+- [Python3.13](https://www.python.org/downloads/)
+
+1. Clone the repository  
+   `git clone https://github.com/salatiel6/pokemon-scouting.git`
+
+
+2.  Open the challenge directory  
+    Widows/Linux:`cd pokemon-scouting`  
+    Mac: `open pokemon-scouting`
+
+
+3. Create virtual environment (recommended)  
+   `python -m venv ./venv`
+
+
+4. Activate virtual environment (recommended)  
+   Windows: `venv\Scripts\activate`  
+   Linux/Mac: `source venv/bin/activate`
+
+
+5. Install every dependencies  
+   `pip install -r requirements.txt`
+
+
+6. Run the application  
+   `python -m app.main`
+
+By default the app runs on http://localhost:5000.
 
 Project structure
 ```
 app/
   main.py                 # Flask app factory and runner
   api/
-    routes.py             # Endpoints: /ingest, /add-pokemon, /pokemon, /pokemon/<id_or_name>
+    routes.py             # Endpoints: /ingest, /add-pokemon, /pokemon, /pokemon/id/<id>, /pokemon/name/<name>, /pokemon/pokedex/<number>, /pokemon/by-type, DELETE /pokemon/<id>
   models/
     __init__.py
     pokemon.py            # SQLAlchemy model: single-table Pokemon with JSON fields
@@ -36,6 +66,7 @@ app/
     errors.py             # Global error handlers (ValidationError, DB, upstream, etc.)
     middlewares.py        # Request/response logging middlewares
     logger.py             # Centralized logger configuration
+    exceptions.py         # Exception classes used by handlers/clients
   schemas/
     __init__.py
     pokemon.py            # Pydantic schemas for requests/responses
@@ -59,14 +90,6 @@ tests/                    # Unit tests mirroring app/
 requirements.txt
 README.md
 ```
-
-Run the app
-1. Create a virtual environment and install requirements.
-2. Start the server:
-```
-python -m app.main
-```
-By default the app runs on http://localhost:5000.
 
 Configuration
 - SQLALCHEMY_DATABASE_URI: defaults to `sqlite:///pokemon.db` in the project root.
@@ -105,11 +128,22 @@ HTTP endpoints
   - Returns an array of full details for each Pokemon.
   - Note: `id` is a UUID v4 string.
 
-- GET /pokemon/<id_or_name>
-  - Returns full details for a single Pokemon.
+- GET /pokemon/id/<id>
+  - Returns full details for a single Pokemon by internal id (UUID v4).
 
-- DELETE /pokemon/<id_or_name>
-  - Deletes a Pokemon by id (UUID) or by name.
+- GET /pokemon/name/<name>
+  - Returns full details for a single Pokemon by canonical name (lowercase slug).
+
+- GET /pokemon/pokedex/<number>
+  - Returns full details for a single Pokemon by National Pokédex number (integer).
+
+- POST /pokemon/by-type
+  - Body: `{ "types": ["water", "ground"] }`
+  - Optional query param: `limit` (default 200)
+  - Returns full details for all Pokemon that match ANY of the provided types (union semantics).
+
+- DELETE /pokemon/<id>
+  - Deletes a Pokemon by id (UUID v4).
   - Returns 204 on success or 404 if not found.
 
 Data model (single table)
@@ -124,20 +158,8 @@ Data model (single table)
   - `types` (JSON array of strings)
   - `abilities` (JSON array of strings)
 
-Notes
-- This is a simple case test. No Alembic migrations were added; tables are created on startup if they do not exist.
-- Error handlers and logging middlewares are registered automatically during app startup.
-
-ID policy
-- The primary key `id` of the `pokemon` table is now a UUID v4 (string). We no longer use the Pokédex number as the primary key to allow multiple forms/mega evolutions sharing the same `pokedex_number`.
-- If you previously ran the app with the old schema, delete the existing SQLite file (e.g., `pokemon.db`) before re-ingesting so new records use the updated schema and IDs.
-
 Tests
 - Run the test suite from the project root:
 ```
 pytest -q
 ```
-
-Continuous Integration
-- This repository includes a GitHub Actions workflow that runs the tests on every push and pull request.
-- File: `.github/workflows/tests.yml`
