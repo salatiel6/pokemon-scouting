@@ -1,8 +1,8 @@
 # Pokemon Scouting
 
-## How I used AI to complete the case?
+## How I worded with AI to complete the case?
 
-> Important for evaluators: Please check the Mental Map for the full development journey and decisions: [docs/mental_map.md](docs/mental_map.md)
+> Important for evaluators: Please check my Mental Map for the full development journey and decisions. So you can understand how I think: [docs/mental_map.md](docs/mental_map.md)
 
 This is a minimal Flask application that ingests Pokemon data from PokeAPI, 
 stores it in a local SQLite database using SQLAlchemy, 
