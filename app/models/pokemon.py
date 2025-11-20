@@ -14,15 +14,12 @@ class Pokemon(db.Model):
     Columns:
     - id: UUID v4 (string) primary key.
     - name: unique lowercase name from PokeAPI.
-    - pokedex_number: integer National Pokédex number (not unique to allow forms/mega evolutions).
+    - pokedex_number: integer National Pokedex number (not unique to allow forms/mega evolutions).
     - height_m, weight_kg: floats with units converted from PokeAPI.
     - base_experience: integer, optional.
     - stats: JSON dict {"hp": int, ...}.
     - types: JSON list[str].
     - abilities: JSON list[str].
-
-    :return: None
-    :raises: None
     """
 
     __tablename__ = "pokemon"
