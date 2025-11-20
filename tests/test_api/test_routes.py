@@ -91,7 +91,7 @@ def test_add_and_list_and_get_delete_flow(app, client, monkeypatch) -> None:
     assert len(items) == 1
 
     # Get by name returns full details
-    resp = client.get("/pokemon/pikachu")
+    resp = client.get("/pokemon/name/pikachu")
     assert resp.status_code == 200
     pikachu = resp.get_json()
     assert pikachu["name"] == "pikachu"
@@ -100,16 +100,21 @@ def test_add_and_list_and_get_delete_flow(app, client, monkeypatch) -> None:
     # Get by id (UUID). Fetch ID from database
     p = Pokemon.query.filter_by(name="pikachu").first()
     assert p is not None
-    resp = client.get(f"/pokemon/{p.id}")
+    resp = client.get(f"/pokemon/id/{p.id}")
     assert resp.status_code == 200
     assert resp.get_json()["id"] == p.id
+
+    # Get by pokedex number
+    resp = client.get("/pokemon/pokedex/25")
+    assert resp.status_code == 200
+    assert resp.get_json()["name"] == "pikachu"
 
     # Delete by id
     resp = client.delete(f"/pokemon/{p.id}")
     assert resp.status_code == 204
 
     # Subsequent get returns 404
-    resp = client.get(f"/pokemon/{p.id}")
+    resp = client.get(f"/pokemon/id/{p.id}")
     assert resp.status_code == 404
 
 
@@ -127,3 +132,55 @@ def test_validation_error_returns_400(client) -> None:
     assert resp.status_code == 400
     body = resp.get_json()
     assert body["error"] == "validation_error"
+
+
+def test_list_by_type_union(app, client, monkeypatch) -> None:
+    """
+    Verify that POST /pokemon/by-type returns union of matches.
+
+    :param app: Flask app fixture
+    :param client: Flask client fixture
+    :param monkeypatch: pytest monkeypatch
+
+    :return: None
+    :raises: None
+    """
+
+    # Patch upstream client to return controlled payloads
+    def fake_get(name: str):  # type: ignore[no-redef]
+        mapping = {
+            "pikachu": _raw_payload("pikachu", 25, ["electric"]),
+            "swampert": _raw_payload("swampert", 260, ["water", "ground"]),
+            "bulbasaur": _raw_payload("bulbasaur", 1, ["grass", "poison"]),
+        }
+        if name in mapping:
+            return mapping[name]
+        from app.handlers.pokeapi_client import PokemonNotFoundError
+
+        raise PokemonNotFoundError(name)
+
+    import app.handlers.pokeapi_client as client_mod
+
+    monkeypatch.setattr(client_mod.PokeAPIClient, "get_pokemon_by_name", staticmethod(fake_get))
+
+    # Ingest three
+    resp = client.post("/add-pokemon", json={"names": ["pikachu", "swampert", "bulbasaur"]})
+    assert resp.status_code == 202
+
+    # Filter by one type 'water' should include swampert
+    resp = client.post("/pokemon/by-type", json={"types": ["water"]})
+    assert resp.status_code == 200
+    names = sorted([x["name"] for x in resp.get_json()])
+    assert "swampert" in names
+
+    # Filter by 'ground' also returns swampert
+    resp = client.post("/pokemon/by-type", json={"types": ["ground"]})
+    assert resp.status_code == 200
+    names = sorted([x["name"] for x in resp.get_json()])
+    assert "swampert" in names
+
+    # Filter by both 'water' and 'ground' still includes swampert (union)
+    resp = client.post("/pokemon/by-type", json={"types": ["water", "ground"]})
+    assert resp.status_code == 200
+    names = sorted([x["name"] for x in resp.get_json()])
+    assert "swampert" in names
