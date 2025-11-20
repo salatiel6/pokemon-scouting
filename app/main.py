@@ -10,23 +10,23 @@ def create_app() -> Flask:
     """
     Create and configure the Flask application instance.
 
-    :return: A configured Flask app instance
+    :return: A configured Flask app_ instance
     :raises: None
     """
-    app = Flask(__name__)
+    app_ = Flask(__name__)
 
     # Basic configuration with sensible defaults for a simple case study
-    app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///pokemon.db")
-    app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
-    app.config.setdefault("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
+    app_.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///pokemon.db")
+    app_.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+    app_.config.setdefault("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
 
     # Initialize database, middlewares, and register HTTP routes
-    init_db(app)
-    register_middlewares(app)
-    register_routes(app)
-    register_error_handlers(app)
+    init_db(app_)
+    register_middlewares(app_)
+    register_routes(app_)
+    register_error_handlers(app_)
 
-    return app
+    return app_
 
 
 app = create_app()
