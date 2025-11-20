@@ -1,6 +1,7 @@
 import os
-from flask_sqlalchemy import SQLAlchemy
+
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
@@ -25,4 +26,5 @@ def init_db(app: Flask) -> None:
     with app.app_context():
         # This local import avoids circular import issues at module import time
         from app.models import pokemon as _models  # noqa: F401
+
         db.create_all()
