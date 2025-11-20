@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Integer, String, Float
+from sqlalchemy import Float, Integer, String
 from sqlalchemy.dialects.sqlite import JSON as SQLITE_JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,7 +32,7 @@ class Pokemon(db.Model):
     pokedex_number: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
     height_m: Mapped[float] = mapped_column(Float, nullable=False)
     weight_kg: Mapped[float] = mapped_column(Float, nullable=False)
-    base_experience: Mapped[int] = mapped_column(Integer, nullable=True)
+    base_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     stats: Mapped[dict[str, int]] = mapped_column(SQLITE_JSON, nullable=False)
 
     types: Mapped[list[str]] = mapped_column(SQLITE_JSON, nullable=False, default=list)

@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PokemonIngestRequest(BaseModel):
@@ -50,6 +50,8 @@ class PokemonDetail(BaseModel):
     stats: dict[str, int]
     types: list[str]
     abilities: list[str]
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IngestResult(BaseModel):

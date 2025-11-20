@@ -31,7 +31,7 @@ class IngestService:
         """
         if base_url is None:
             base_url = current_app.config.get("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
-        self.client = PokeAPIClient(base_url)
+        self.client = PokeAPIClient(str(base_url))
 
     def ingest_many(self, names: Iterable[str]) -> dict[str, Any]:
         """
@@ -71,10 +71,9 @@ class IngestService:
         # Upsert by unique name (PokeAPI canonical slug)
         p = Pokemon.query.filter_by(name=data["name"]).one_or_none()
         if not p:
-            p = Pokemon(
-                pokedex_number=data["pokedex_number"],
-                name=data["name"],
-            )
+            p = Pokemon()
+            p.pokedex_number = data["pokedex_number"]
+            p.name = data["name"]
 
         # Update scalar fields
         p.name = data["name"]

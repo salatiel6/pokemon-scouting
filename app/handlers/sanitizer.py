@@ -1,6 +1,5 @@
 from typing import Any
 
-
 STAT_KEYS = {
     "hp",
     "attack",
@@ -42,12 +41,18 @@ def sanitize_pokemon_data(raw: dict[str, Any]) -> dict[str, Any]:
     types = [t["type"]["name"].lower() for t in (raw.get("types") or [])]
     abilities = [a["ability"]["name"].lower() for a in (raw.get("abilities") or [])]
 
+    pokedex_id = raw.get("id")
+    if pokedex_id is None:
+        raise ValueError("Missing 'id' in PokeAPI payload")
+
+    base_experience_raw = raw.get("base_experience")
+
     return {
         "name": name,
-        "pokedex_number": int(raw.get("id")),
+        "pokedex_number": int(pokedex_id),
         "height_m": float(raw.get("height", 0) or 0) / 10.0,
         "weight_kg": float(raw.get("weight", 0) or 0) / 10.0,
-        "base_experience": int(raw.get("base_experience")) if raw.get("base_experience") is not None else None,
+        "base_experience": int(base_experience_raw) if base_experience_raw is not None else None,
         "stats": _extract_stats(raw.get("stats") or []),
         "types": types,
         "abilities": abilities,
