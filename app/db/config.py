@@ -9,7 +9,6 @@ def read_pokemon_csv(default_path: str = "app/db/pokemon_list.csv") -> list[str]
     :param default_path: CSV file path with a `name` header
 
     :return: A list of Pokemon names in lowercase
-    :raises: None
     """
     if not os.path.exists(default_path):
         return []
