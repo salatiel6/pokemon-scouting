@@ -16,7 +16,6 @@ def handle_validation_error(err: ValidationError) -> Tuple[Any, int]:
     :param err: an instance of pydantic.ValidationError
 
     :return: A tuple (JSON response, HTTP 400)
-    :raises: None
     """
     return (
         jsonify(
@@ -36,7 +35,6 @@ def handle_pokemon_not_found(err: PokemonNotFoundError) -> Tuple[Any, int]:
     :param err: a PokemonNotFoundError instance
 
     :return: A tuple (JSON response, HTTP 404)
-    :raises: None
     """
     return (
         jsonify(
@@ -56,7 +54,6 @@ def handle_upstream_error(err: PokeAPIError) -> Tuple[Any, int]:
     :param err: a PokeAPIError instance
 
     :return: A tuple (JSON response, HTTP 502)
-    :raises: None
     """
     return (
         jsonify(
@@ -76,7 +73,6 @@ def handle_db_error(err: SQLAlchemyError) -> Tuple[Any, int]:
     :param err: a SQLAlchemyError instance
 
     :return: A tuple (JSON response, HTTP 500)
-    :raises: None
     """
     try:
         db.session.rollback()
@@ -101,7 +97,6 @@ def handle_unexpected_error(_err: Exception) -> Tuple[Any, int]:
     :param _err: any unexpected exception
 
     :return: A tuple (JSON response, HTTP 500)
-    :raises: None
     """
     return (
         jsonify(
@@ -124,7 +119,6 @@ def register_error_handlers(app: Flask) -> None:
     :param app: a Flask application instance
 
     :return: None
-    :raises: None
     """
     app.register_error_handler(ValidationError, handle_validation_error)
     app.register_error_handler(PokemonNotFoundError, handle_pokemon_not_found)
