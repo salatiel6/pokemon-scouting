@@ -21,7 +21,7 @@ class DummyResp:
 
 def test_alias_mapping_mrmime(monkeypatch) -> None:
     """
-    Ensure alias 'mrmime' resolves to 'mr-mime' and performs the request on that slug.
+    Ensure alias 'mrmime' resolves to 'mr-mime' and performs the request on that name.
 
     :param monkeypatch: pytest monkeypatch fixture
 
