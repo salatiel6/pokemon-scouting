@@ -23,6 +23,8 @@ class PokemonIngestRequest(BaseModel):
         norm: list[str] = []
         for x in v:
             s = str(x).strip().lower()
+            # Map gender symbols before stripping non-alphanumerics
+            s = s.replace("♀", "f").replace("♂", "m")
             s = "".join(ch for ch in s if ch.isalnum())
             if s:
                 norm.append(s)
