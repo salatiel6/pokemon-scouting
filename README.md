@@ -1,13 +1,19 @@
-# Pokemon Scouting (Minimal Flask App)
+# Pokemon Scouting
+
+> Important for evaluators: How I used AI to complete the case?
+>
+> Please check the Mental Map for the full development journey with AI and decisions: [docs/mental_map.md](docs/mental_map.md)
 
 This is a minimal Flask application that ingests Pokemon data from PokeAPI, stores it in a local SQLite database using SQLAlchemy, and exposes simple HTTP endpoints to manage and query the data.
 
 Key design decisions (kept intentionally simple):
-- Minimal project structure with only two top-level folders: app/ and tests/ (tests to be added later).
+- Minimal project structure with only two top-level folders: app/ and tests/ (tests mirror the app structure).
 - Initial Pokemon list is loaded from a CSV file.
 - An endpoint allows adding more Pokemon after the initial load.
 - No blueprints, simple route registration.
 - Pydantic for request/response schemas.
+- Global JSON error handlers and request/response logging middlewares.
+- Unit tests included and CI workflow (GitHub Actions) running pytest on push/PR.
 
 Requirements
 - Python 3.11+
@@ -27,6 +33,9 @@ app/
     pokeapi_client.py     # HTTP client for PokeAPI
     sanitizer.py          # Transforms PokeAPI payload to internal schema
     ingest_service.py     # Orchestrates fetch → sanitize → upsert
+    errors.py             # Global error handlers (ValidationError, DB, upstream, etc.)
+    middlewares.py        # Request/response logging middlewares
+    logger.py             # Centralized logger configuration
   schemas/
     __init__.py
     pokemon.py            # Pydantic schemas for requests/responses
@@ -34,6 +43,19 @@ app/
     __init__.py           # SQLAlchemy initialization (create_all)
     config.py             # CSV reader utility
     pokemon_list.csv      # Initial seed list of Pokemon names
+tests/                    # Unit tests mirroring app/
+  conftest.py
+  test_api/
+    test_routes.py
+  test_handlers/
+    test_ingest_service.py
+    test_pokeapi_client.py
+    test_sanitizer.py
+  test_schemas/
+    test_pokemon.py
+.github/
+  workflows/
+    tests.yml             # CI workflow running pytest on push/PR
 requirements.txt
 README.md
 ```
@@ -77,7 +99,9 @@ HTTP endpoints
   - Response: same format as /ingest
 
 - GET /pokemon
-  - Optional query param: `name` for partial match (e.g., `?name=pika`).
+  - Optional query params:
+    - `name` for partial match (e.g., `?name=pika`).
+    - `limit` (default: 200) to control number of results.
   - Returns an array of full details for each Pokemon.
   - Note: `id` is a UUID v4 string.
 
@@ -102,22 +126,18 @@ Data model (single table)
 
 Notes
 - This is a simple case test. No Alembic migrations were added; tables are created on startup if they do not exist.
-- Tests will be implemented later.
+- Error handlers and logging middlewares are registered automatically during app startup.
 
 ID policy
 - The primary key `id` of the `pokemon` table is now a UUID v4 (string). We no longer use the Pokédex number as the primary key to allow multiple forms/mega evolutions sharing the same `pokedex_number`.
 - If you previously ran the app with the old schema, delete the existing SQLite file (e.g., `pokemon.db`) before re-ingesting so new records use the updated schema and IDs.
 
-Lowercase scan script (diagnostics)
-This repository includes a helper script to check which Pokémon names fail when queried strictly in lowercase against PokeAPI.
-
-How to run from the project root:
+Tests
+- Run the test suite from the project root:
 ```
-python scan_lower_pokemons.py --limit 1025 --output lower_failures.log
+pytest -q
 ```
-Options:
-- `--limit`: Max National Dex number to check (default: 1025, i.e., up to Pecharunt).
-- `--base-url`: PokeAPI base URL (default: https://pokeapi.co/api/v2).
-- `--output`: File to write the failing lowercase names (default: lower_failures.log).
 
-The script prints a summary and writes failing slugs to the output file.
+Continuous Integration
+- This repository includes a GitHub Actions workflow that runs the tests on every push and pull request.
+- File: `.github/workflows/tests.yml`
