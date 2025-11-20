@@ -1,0 +1,16 @@
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # Erro, pyflakes, warnings, import sorting
+
+[tool.pyright]
+include = ["app"]
+exclude = ["**/__pycache__"]
+pythonVersion = "3.13"
+typeCheckingMode = "basic"
+# Configuração específica para SQLAlchemy
+reportGeneralTypeIssues = "warning"
+reportOptionalMemberAccess = "warning"
