@@ -1,0 +1,23 @@
+
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6  # Use a versão mais recente disponível
+    hooks:
+      - id: ruff
+        name: ruff lint
+        args: [--fix]
+        stages: [pre-commit]
+      - id: ruff-format
+        name: ruff format
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright typecheck
+        entry: pyright
+        language: system
+        types: [python]
+        stages: [pre-commit]
+        pass_filenames: false
