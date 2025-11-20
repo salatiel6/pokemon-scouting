@@ -50,6 +50,5 @@ def register_middlewares(app: Flask) -> None:
 
     :return: None
     """
-    # Register the middlewares without using nested functions or decorators
     app.before_request(log_request_info)
     app.after_request(log_response_info)
