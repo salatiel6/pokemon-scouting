@@ -1,4 +1,5 @@
 from typing import Any
+
 import requests
 
 from app.handlers.logger import logger
