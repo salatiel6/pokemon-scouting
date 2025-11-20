@@ -53,9 +53,9 @@ class PokeAPIClient:
 
     def _try_fetch(self, name: str) -> dict[str, Any] | None:
         """
-        Try to fetch a Pokemon by a given slug. Returns None on 404.
+        Try to fetch a Pokemon by a given name. Returns None on 404.
 
-        :param name: A candidate slug to append to /pokemon/
+        :param name: A candidate name to append to /pokemon/
 
         :return: JSON dict on success, or None if the response was 404
         :raises: PokeAPIError for non-404 HTTP errors or request failures
