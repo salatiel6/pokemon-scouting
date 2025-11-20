@@ -2,8 +2,8 @@ from typing import Any
 
 from flask import Flask, jsonify, request
 
-from app.db.config import read_pokemon_csv
 from app.db import db
+from app.db.config import read_pokemon_csv
 from app.handlers.ingest_service import IngestService
 from app.handlers.logger import logger
 from app.models.pokemon import Pokemon
@@ -24,17 +24,7 @@ def _to_detail_dict(pokemon: Pokemon) -> dict:
     :return: A dict with full Pokemon details
     :raises: None
     """
-    detail = PokemonDetail(
-        id=pokemon.id,
-        name=pokemon.name,
-        pokedex_number=pokemon.pokedex_number,
-        height_m=pokemon.height_m,
-        weight_kg=pokemon.weight_kg,
-        base_experience=pokemon.base_experience,
-        stats=pokemon.stats,
-        types=pokemon.types or [],
-        abilities=pokemon.abilities or [],
-    )
+    detail = PokemonDetail.model_validate(pokemon)
     return detail.model_dump()
 
 
