@@ -1,6 +1,6 @@
 # Pokemon Scouting
 
-## How I worded with AI to complete the case?
+## How I worked with AI to complete the case?
 
 > Important for evaluators: Please check my Mental Map for the full development journey and decisions. So you can understand how I think: [docs/mental_map.md](docs/mental_map.md)
 
