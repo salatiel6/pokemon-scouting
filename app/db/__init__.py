@@ -13,7 +13,6 @@ def init_db(app: Flask) -> None:
     :param app: A Flask application instance
 
     :return: None
-    :raises: None
     """
     db.init_app(app)
     uri = app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///pokemon.db")
