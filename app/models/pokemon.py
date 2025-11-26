@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Float, Integer, String
+from sqlalchemy import DateTime, Float, Integer, String
 from sqlalchemy.dialects.sqlite import JSON as SQLITE_JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,3 +35,6 @@ class Pokemon(db.Model):
 
     types: Mapped[list[str]] = mapped_column(SQLITE_JSON, nullable=False, default=list)
     abilities: Mapped[list[str]] = mapped_column(SQLITE_JSON, nullable=False, default=list)
+
+    # Last time this row was refreshed from PokeAPI (UTC)
+    refreshed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
