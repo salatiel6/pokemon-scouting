@@ -62,7 +62,7 @@ def test_add_and_list_and_get_delete_flow(app, client, monkeypatch) -> None:
     monkeypatch.setattr(client_mod.PokeAPIClient, "get_pokemon_by_name", staticmethod(fake_get))
 
     # Add mixed names: one ok, one unknown
-    resp = client.post("/add-pokemon", json={"names": ["pikachu", "unknown"]})
+    resp = client.post("/pokemon", json={"names": ["pikachu", "unknown"]})
     assert resp.status_code == 202
     data = resp.get_json()
     assert data["ok"] == ["pikachu"]
@@ -70,7 +70,7 @@ def test_add_and_list_and_get_delete_flow(app, client, monkeypatch) -> None:
     assert data["errors"] == []
 
     # Add another valid one
-    resp = client.post("/add-pokemon", json={"names": ["bulbasaur"]})
+    resp = client.post("/pokemon", json={"names": ["bulbasaur"]})
     assert resp.status_code == 202
 
     # List with default limit (200) includes both with full details
@@ -128,7 +128,7 @@ def test_validation_error_returns_400(client) -> None:
     :raises: None
     """
     # names must be a list; send an object to cause validation error
-    resp = client.post("/add-pokemon", json={"names": {"bad": "format"}})
+    resp = client.post("/pokemon", json={"names": {"bad": "format"}})
     assert resp.status_code == 400
     body = resp.get_json()
     assert body["error"] == "validation_error"
@@ -164,7 +164,7 @@ def test_list_by_type_union(app, client, monkeypatch) -> None:
     monkeypatch.setattr(client_mod.PokeAPIClient, "get_pokemon_by_name", staticmethod(fake_get))
 
     # Ingest three
-    resp = client.post("/add-pokemon", json={"names": ["pikachu", "swampert", "bulbasaur"]})
+    resp = client.post("/pokemon", json={"names": ["pikachu", "swampert", "bulbasaur"]})
     assert resp.status_code == 202
 
     # Filter by one type 'water' should include swampert
