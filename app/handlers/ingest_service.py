@@ -1,8 +1,11 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any, Iterable
 
-from flask import current_app
+from sqlalchemy import ColumnElement
 
 from app.db import db
+from app.handlers.cache import cache_get, cache_set
+from app.handlers.config import settings
 from app.handlers.logger import logger
 from app.handlers.pokeapi_client import (
     PokeAPIClient,
@@ -26,7 +29,7 @@ class IngestService:
         :return: None
         """
         if base_url is None:
-            base_url = current_app.config.get("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
+            base_url = settings.POKEAPI_BASE_URL
         self.client = PokeAPIClient(str(base_url))
 
     def ingest_many(self, names: Iterable[str]) -> dict[str, Any]:
@@ -41,7 +44,22 @@ class IngestService:
 
         for name in names:
             try:
-                raw = self.client.get_pokemon_by_name(name)
+                # DB-first: if record exists and is not stale, skip upstream call
+                existing = Pokemon.query.filter_by(name=str(name).lower()).one_or_none()
+                if existing is not None and not self._is_stale(existing):
+                    logger.debug(f"db-first: fresh record, skipping fetch for {existing.name}")
+                    results["ok"].append(existing.name)
+                    continue
+
+                # Cache-first for upstream payload
+                norm = "".join(ch for ch in str(name).strip().lower() if ch.isalnum())
+                cache_key = f"pokeapi:{norm}"
+                raw = cache_get(cache_key)
+                if raw is None:
+                    raw = self.client.get_pokemon_by_name(name)
+                    # Use default cache timeout from settings
+                    cache_set(cache_key, raw, timeout=int(settings.CACHE_DEFAULT_TIMEOUT))
+
                 data = sanitize_pokemon_data(raw)
                 self._upsert(data)
                 results["ok"].append(data["name"])
@@ -82,4 +100,28 @@ class IngestService:
         p.types = list(data.get("types") or [])
         p.abilities = list(data.get("abilities") or [])
 
+        # Update freshness timestamp
+        p.refreshed_at = datetime.now(UTC)
+
         db.session.add(p)
+
+    @staticmethod
+    def _is_stale(pokemon: Pokemon) -> bool | ColumnElement[bool]:
+        """
+        Check if a Pokemon row is stale based on app configuration TTL.
+
+        :param pokemon: Pokemon ORM instance
+
+        :return: True if stale or never refreshed, False if fresh
+        """
+        minutes = int(settings.STALE_TTL_MINUTES)
+        refreshed = pokemon.refreshed_at
+
+        if refreshed is None:
+            return True
+
+        if refreshed.tzinfo is None:
+            refreshed = refreshed.replace(tzinfo=UTC)
+
+        cutoff = datetime.now(UTC) - timedelta(minutes=minutes)
+        return refreshed < cutoff
