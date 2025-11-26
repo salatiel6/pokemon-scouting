@@ -1,0 +1,16 @@
+version: "3.12"
+
+services:
+  web:
+    build: .
+    container_name: pokemon-scouting
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    # Uncomment to persist SQLite DB to host or change DB path via env
+    # volumes:
+    #   - ./instance:/app/instance
+    # environment:
+    #   - SQLALCHEMY_DATABASE_URI=sqlite:///instance/pokemon.db
