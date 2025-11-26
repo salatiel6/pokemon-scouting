@@ -1,4 +1,4 @@
-name: CI - Tests
+name: CI
 
 on:
   push:
@@ -9,25 +9,31 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.13"]
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
+          python-version: "3.13"
 
-      - name: Install dependencies
+      - name: Create .env for tests
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          cat << 'EOF' > .env
+          SQLALCHEMY_DATABASE_URI=sqlite:///test.db
+          POKEAPI_BASE_URL=https://pokeapi.co/api/v2
+          SYNC_ON_START=False
+          DISABLE_BACKGROUND_SYNC=True
+          SYNC_INTERVAL_MINUTES=10
+          STALE_TTL_MINUTES=120
+          REFRESH_BATCH_SIZE=50
+          CACHE_TYPE=simple
+          CACHE_DEFAULT_TIMEOUT=300
+          EOF
+
+      - name: Install
+        run: pip install -r requirements.txt
 
       - name: Run tests
         run: pytest -q
