@@ -62,15 +62,14 @@ This is my mental map describing how I used an AI assistant to design and implem
 - This keeps first-run UX smooth and removes an unnecessary operational endpoint.
 
 ## 11) I made the routes more RESTful
-- I unified ingestion under POST /pokemon (kept /add-pokemon temporarily as a deprecated alias).
+- I unified ingestion under POST /pokemon.
 - I split “get by” into distinct resource paths:
-  - GET /pokemon (list; supports name filter and limit)
+  - GET /pokemon (list; supports limit filter)
   - GET /pokemon/id/<id>
   - GET /pokemon/name/<name>
   - GET /pokemon/pokedex/<number>
   - POST /pokemon/by-type (union semantics; optional limit)
   - DELETE /pokemon/<id>
-- All list and get endpoints now return full detail consistently; the list supports limit (default 200).
 
 ## 12) I reduced latency with DB-first, caching, and background sync
 - DB-first: on POST /pokemon, if a record exists and is fresh (not stale), I skip PokeAPI.
@@ -86,7 +85,6 @@ This is my mental map describing how I used an AI assistant to design and implem
 ## 14) I moved configuration to .env with a typed Settings singleton
 - I created a Settings class (pydantic-settings) to load all required variables from .env/env. All keys are required (no defaults) for production-like discipline.
 - I exposed a lazy singleton (settings) for consistent access across modules and mirrored those values into app.config for extension compatibility.
-- Tests use monkeypatch to override env vars; this validated that the app reads env correctly. An optional fallback path exists if pydantic-settings is unavailable.
 
 ## 15) I dockerized the app
 - I added a multi-stage Dockerfile (builder + runtime), a docker-compose.yaml, and a .dockerignore.
