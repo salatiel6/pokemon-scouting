@@ -18,20 +18,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Create .env for tests
-        run: |
-          cat << 'EOF' > .env
-          SQLALCHEMY_DATABASE_URI=sqlite:///test.db
-          POKEAPI_BASE_URL=https://pokeapi.co/api/v2
-          SYNC_ON_START=False
-          DISABLE_BACKGROUND_SYNC=True
-          SYNC_INTERVAL_MINUTES=10
-          STALE_TTL_MINUTES=120
-          REFRESH_BATCH_SIZE=50
-          CACHE_TYPE=simple
-          CACHE_DEFAULT_TIMEOUT=300
-          EOF
-
       - name: Install
         run: pip install -r requirements.txt
 
