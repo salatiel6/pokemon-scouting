@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 from flask import Flask
 
 from app.api.health import health_bp
@@ -59,11 +58,6 @@ def create_app() -> Flask:
     :raises: None
     """
     app_ = Flask(__name__)
-
-    # Load .env for other libs that may rely on it (optional)
-    load_dotenv(override=False)
-
-    # Initialize Settings (validates that required env vars exist)
 
     # Reflect settings into app.config so existing components continue to work
     app_.config["SQLALCHEMY_DATABASE_URI"] = settings.SQLALCHEMY_DATABASE_URI
