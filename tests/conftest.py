@@ -1,9 +1,11 @@
+import os
 from typing import Generator
 
 import pytest
 from flask import Flask
 
-from app.api.routes import register_routes
+from app.api.health import health_bp
+from app.api.pokemon import pokemon_bp
 from app.db import db, init_db
 from app.handlers.errors import register_error_handlers
 from app.handlers.middlewares import register_middlewares
@@ -20,6 +22,16 @@ def app(tmp_path) -> Flask:
     :raises: None
     """
     test_db_path = tmp_path / "test.db"
+    # Ensure required environment variables for Settings (no defaults allowed)
+    os.environ.setdefault("SQLALCHEMY_DATABASE_URI", f"sqlite:///{test_db_path}")
+    os.environ.setdefault("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
+    os.environ.setdefault("SYNC_ON_START", "false")
+    os.environ.setdefault("CACHE_TYPE", "NullCache")
+    os.environ.setdefault("CACHE_DEFAULT_TIMEOUT", "120")
+    os.environ.setdefault("STALE_TTL_MINUTES", "30")
+    os.environ.setdefault("DISABLE_BACKGROUND_SYNC", "true")
+    os.environ.setdefault("SYNC_INTERVAL_MINUTES", "30")
+    os.environ.setdefault("REFRESH_BATCH_SIZE", "10")
     flask_app = Flask(__name__)
     flask_app.config.update(
         TESTING=True,
@@ -31,7 +43,9 @@ def app(tmp_path) -> Flask:
     # Wire up app like our factory does
     init_db(flask_app)
     register_middlewares(flask_app)
-    register_routes(flask_app)
+    # Register API blueprints
+    flask_app.register_blueprint(pokemon_bp)
+    flask_app.register_blueprint(health_bp)
     register_error_handlers(flask_app)
 
     yield flask_app
