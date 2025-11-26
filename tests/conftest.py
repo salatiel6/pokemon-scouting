@@ -1,5 +1,3 @@
-# ruff: noqa: E402
-
 import os
 
 # Ensure required environment variables for Settings
@@ -13,16 +11,16 @@ os.environ.setdefault("DISABLE_BACKGROUND_SYNC", "true")
 os.environ.setdefault("SYNC_INTERVAL_MINUTES", "30")
 os.environ.setdefault("REFRESH_BATCH_SIZE", "10")
 
-from typing import Any, Generator
+from typing import Any, Generator  # noqa: E402
 
-import pytest
-from flask import Flask
+import pytest  # noqa: E402
+from flask import Flask  # noqa: E402
 
-from app.api.health import health_bp
-from app.api.pokemon import pokemon_bp
-from app.db import db, init_db
-from app.handlers.errors import register_error_handlers
-from app.handlers.middlewares import register_middlewares
+from app.api.health import health_bp  # noqa: E402
+from app.api.pokemon import pokemon_bp  # noqa: E402
+from app.db import db, init_db  # noqa: E402
+from app.handlers.errors import register_error_handlers  # noqa: E402
+from app.handlers.middlewares import register_middlewares  # noqa: E402
 
 
 @pytest.fixture()
