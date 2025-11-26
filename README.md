@@ -192,17 +192,14 @@ HTTP endpoints
   - Body: `{ "names": ["bulbasaur"] }`
   - Behavior: DB-first + cache-first. If the Pokemon already exists in DB and is fresh (not stale by `STALE_TTL_MINUTES`), PokeAPI is not called. Otherwise, it uses cache; on miss, fetches from PokeAPI and caches the raw payload.
   - Response: `{ "ok": [...], "not_found": [...], "errors": [{"name": ..., "error": ...}] }`
-  - Note: Deprecated alias still available temporarily: `POST /add-pokemon`.
 
 - GET /pokemon
-  - Optional query params:
-    - `name` for partial match (e.g., `?name=pika`).
+  - Optional query param:
     - `limit` (default: 200) to control number of results.
   - Returns an array of full details for each Pokemon.
-  - Note: `id` is a UUID v4 string.
 
 - GET /pokemon/id/<id>
-  - Returns full details for a single Pokemon by internal id (UUID v4).
+  - Returns full details for a single Pokemon by internal id.
 
 - GET /pokemon/name/<name>
   - Returns full details for a single Pokemon by canonical name (lowercase slug).
@@ -216,7 +213,7 @@ HTTP endpoints
   - Returns full details for all Pokemon that match ANY of the provided types (union semantics).
 
 - DELETE /pokemon/<id>
-  - Deletes a Pokemon by id (UUID v4).
+  - Deletes a Pokemon by id.
   - Returns 204 on success or 404 if not found.
 
 Data model (single table)
@@ -230,6 +227,7 @@ Data model (single table)
   - `stats` (JSON object: {"hp": int, "attack": int, ...})
   - `types` (JSON array of strings)
   - `abilities` (JSON array of strings)
+  - `refreshed_at` (UTC datetime, nullable)
 
 Tests
 - Run the test suite from the project root:
