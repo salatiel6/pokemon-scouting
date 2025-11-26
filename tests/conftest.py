@@ -1,5 +1,19 @@
+# ruff: noqa: E402
+
 import os
-from typing import Generator
+
+# Ensure required environment variables for Settings
+os.environ.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///test-default.db")
+os.environ.setdefault("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
+os.environ.setdefault("SYNC_ON_START", "false")
+os.environ.setdefault("CACHE_TYPE", "NullCache")
+os.environ.setdefault("CACHE_DEFAULT_TIMEOUT", "120")
+os.environ.setdefault("STALE_TTL_MINUTES", "30")
+os.environ.setdefault("DISABLE_BACKGROUND_SYNC", "true")
+os.environ.setdefault("SYNC_INTERVAL_MINUTES", "30")
+os.environ.setdefault("REFRESH_BATCH_SIZE", "10")
+
+from typing import Any, Generator
 
 import pytest
 from flask import Flask
@@ -12,7 +26,7 @@ from app.handlers.middlewares import register_middlewares
 
 
 @pytest.fixture()
-def app(tmp_path) -> Flask:
+def app(tmp_path) -> Generator[Flask, Any, None]:
     """
     Create a Flask app instance configured for testing with an isolated SQLite DB.
 
@@ -21,21 +35,10 @@ def app(tmp_path) -> Flask:
     :return: A configured Flask application instance for tests
     :raises: None
     """
-    test_db_path = tmp_path / "test.db"
-    # Ensure required environment variables for Settings (no defaults allowed)
-    os.environ.setdefault("SQLALCHEMY_DATABASE_URI", f"sqlite:///{test_db_path}")
-    os.environ.setdefault("POKEAPI_BASE_URL", "https://pokeapi.co/api/v2")
-    os.environ.setdefault("SYNC_ON_START", "false")
-    os.environ.setdefault("CACHE_TYPE", "NullCache")
-    os.environ.setdefault("CACHE_DEFAULT_TIMEOUT", "120")
-    os.environ.setdefault("STALE_TTL_MINUTES", "30")
-    os.environ.setdefault("DISABLE_BACKGROUND_SYNC", "true")
-    os.environ.setdefault("SYNC_INTERVAL_MINUTES", "30")
-    os.environ.setdefault("REFRESH_BATCH_SIZE", "10")
     flask_app = Flask(__name__)
     flask_app.config.update(
         TESTING=True,
-        SQLALCHEMY_DATABASE_URI=f"sqlite:///{test_db_path}",
+        SQLALCHEMY_DATABASE_URI="sqlite:///test-default.db",
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         POKEAPI_BASE_URL="https://pokeapi.co/api/v2",
     )
