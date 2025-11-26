@@ -28,8 +28,7 @@ Requirements:
 
 
 2.  Open the challenge directory  
-    Widows/Linux:`cd pokemon-scouting`  
-    Mac: `open pokemon-scouting`
+    `cd pokemon-scouting`
 
 
 3. Create virtual environment (recommended)  
@@ -46,9 +45,9 @@ Requirements:
 
 
 6. Configure environment
-   - Copy the example file and adjust values as needed:
    - The values are available only because this is a test
    - On normal cases `.env` values should be private
+   - Copy the example file and adjust values as needed
      - `cp .env.example .env`
 
 7. Run the application  
@@ -61,7 +60,7 @@ By default the app runs on http://localhost:5000.
 This repository ships with a ready-to-use Docker setup for isolated execution.
 
 Steps:
-1) Copy the env file (optional, recommended):
+1) Copy the env file:
 ```
 cp .env.example .env
 ```
@@ -76,7 +75,7 @@ http://localhost:5000
 
 Notes:
 - Environment variables are loaded from `.env` by docker-compose (env_file). You can tweak cache, sync interval, etc., there.
-- By default inside the container the SQLite DB lives at `sqlite:///instance/pokemon.db`. To persist it on the host, uncomment the `volumes` section in `docker-compose.yaml` and optionally set `SQLALCHEMY_DATABASE_URI=sqlite:///instance/pokemon.db` (already defaulted in the Dockerfile runtime stage).
+- By default inside the container the SQLite DB lives at `sqlite:///instance/pokemon.db`. To persist it on the host, uncomment the `volumes` section in `docker-compose.yaml`.
 - If `SYNC_ON_START=true`, on the first boot the app will ingest the initial CSV list from `app/db/pokemon_list.csv`.
 
 Quick curl examples (while container is running):
@@ -90,9 +89,9 @@ curl -X POST http://localhost:5000/pokemon \
   -H 'Content-Type: application/json' \
   -d '{"names":["pikachu"]}'
 ```
-- List Pokemons (limit 5):
+- List Pokemons (You can optionally add a limit param to limit the number of results):
 ```
-curl 'http://localhost:5000/pokemon?limit=5'
+curl 'http://localhost:5000/pokemon?limit=30'
 ```
 - Get by name:
 ```
@@ -127,6 +126,9 @@ app/
     sanitizer.py          # Transforms PokeAPI payload to internal schema
     ingest_service.py     # Orchestrates fetch → sanitize → upsert
     errors.py             # Global error handlers (ValidationError, DB, upstream, etc.)
+    config.py             # Centralized configuration
+    cache.py              # In-memory caching (Flask-Caching) helpers
+    scheduler.py          # Background scheduler for periodic refresh
     middlewares.py        # Request/response logging middlewares
     logger.py             # Centralized logger configuration
     exceptions.py         # Exception classes used by handlers/clients
@@ -142,6 +144,8 @@ docker-compose.yaml       # Simple compose with web service and env_file mapping
 .dockerignore             # Slim build context
 tests/                    # Unit tests mirroring app/
   conftest.py
+  test_app/
+    test_config.py
   test_api/
     test_routes.py
   test_handlers/
@@ -156,19 +160,6 @@ tests/                    # Unit tests mirroring app/
 requirements.txt
 README.md
 ```
-
-Configuration via .env
-- The app automatically loads `.env` if present (using python-dotenv). All variables are optional and have defaults.
-- Keys you can set:
-  - `SQLALCHEMY_DATABASE_URI` (default `sqlite:///pokemon.db`)
-  - `POKEAPI_BASE_URL` (default `https://pokeapi.co/api/v2`)
-  - `SYNC_ON_START` (default `true`)
-  - `CACHE_TYPE` (default `SimpleCache`)
-  - `CACHE_DEFAULT_TIMEOUT` (default `1800` seconds)
-  - `STALE_TTL_MINUTES` (default `30`)
-  - `DISABLE_BACKGROUND_SYNC` (default `false`)
-  - `SYNC_INTERVAL_MINUTES` (default `30`)
-  - `REFRESH_BATCH_SIZE` (default `20`)
   
 Tip: For local development when running tests or avoiding network calls, consider setting:
 ```
