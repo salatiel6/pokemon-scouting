@@ -33,5 +33,4 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
-# Public proxy; importers can `from app.handlers.config import settings`
 settings = Settings()  # type: ignore
