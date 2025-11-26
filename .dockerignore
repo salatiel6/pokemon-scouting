@@ -1,0 +1,29 @@
+# VCS and tooling
+.git
+.github
+.gitignore
+.dockerignore
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments and builds
+.venv/
+venv/
+env/
+build/
+dist/
+
+# OS files
+.DS_Store
+
+# Local config and data not needed in image
+.env
+instance/
+*.db
+*.sqlite3
