@@ -1,9 +1,8 @@
 from typing import Any
 
-from flask import Flask, jsonify, request
+from flask import Blueprint, jsonify, request
 
 from app.db import db
-from app.db.config import read_pokemon_csv
 from app.handlers.ingest_service import IngestService
 from app.handlers.logger import logger
 from app.models.pokemon import Pokemon
@@ -13,6 +12,8 @@ from app.schemas.pokemon import (
     PokemonIngestRequest,
     TypesFilterRequest,
 )
+
+pokemon_bp = Blueprint("pokemon", __name__, url_prefix="/pokemon")
 
 
 def _to_detail_dict(pokemon: Pokemon) -> dict:
@@ -26,28 +27,6 @@ def _to_detail_dict(pokemon: Pokemon) -> dict:
     """
     detail = PokemonDetail.model_validate(pokemon)
     return detail.model_dump()
-
-
-def ingest() -> tuple[Any, int]:
-    """
-    Trigger ingestion for a list of Pokemon names.
-
-    :return: A JSON response with the ingestion result and status 202
-    """
-    logger.info("Ingesting Pokemon...")
-
-    payload = request.get_json(silent=True) or {}
-    data = PokemonIngestRequest(**payload)
-    names: list[str] = data.names
-
-    if not names:
-        names = read_pokemon_csv()
-
-    service = IngestService()
-    result_dict = service.ingest_many(names)
-    result = IngestResult(**result_dict)
-
-    return jsonify(result.model_dump()), 202
 
 
 def add_pokemon() -> tuple[Any, int]:
@@ -71,29 +50,29 @@ def add_pokemon() -> tuple[Any, int]:
 
 def list_pokemon() -> Any:
     """
-    list Pokemon resources with optional name filter and limit.
+    List Pokemon resources with optional name filter and limit.
 
     :return: A JSON array of full PokemonDetail objects
     """
     logger.info("Listing Pokemon...")
 
-    q = Pokemon.query
+    query = Pokemon.query
     name_filter = request.args.get("name")
     if name_filter:
-        q = q.filter(Pokemon.name.ilike(f"%{name_filter}%"))
+        query = query.filter(Pokemon.name.ilike(f"%{name_filter}%"))
 
     limit = request.args.get("limit", default=200, type=int)
     if not isinstance(limit, int) or limit <= 0:
         limit = 200
 
-    items = [_to_detail_dict(p) for p in q.limit(limit).all()]
+    items = [_to_detail_dict(pokemon) for pokemon in query.limit(limit).all()]
 
     return jsonify(items)
 
 
 def get_pokemon_by_id(pokemon_id: str) -> tuple[Any, int] | Any:
     """
-    Retrieve a single Pokemon by internal ID (UUID v4 string).
+    Retrieve a single Pokemon by internal ID.
 
     :param pokemon_id: Pokemon UUID identifier
 
@@ -101,11 +80,11 @@ def get_pokemon_by_id(pokemon_id: str) -> tuple[Any, int] | Any:
     """
     logger.info("Retrieving Pokemon by ID...")
 
-    p = Pokemon.query.filter_by(id=pokemon_id).first()
-    if not p:
+    pokemon = Pokemon.query.filter_by(id=pokemon_id).first()
+    if not pokemon:
         return jsonify({"error": "not_found"}), 404
 
-    return jsonify(_to_detail_dict(p))
+    return jsonify(_to_detail_dict(pokemon))
 
 
 def get_pokemon_by_name(name: str) -> tuple[Any, int] | Any:
@@ -118,11 +97,11 @@ def get_pokemon_by_name(name: str) -> tuple[Any, int] | Any:
     """
     logger.info("Retrieving Pokemon by name...")
 
-    p = Pokemon.query.filter_by(name=name.lower()).first()
-    if not p:
+    pokemon = Pokemon.query.filter_by(name=name.lower()).first()
+    if not pokemon:
         return jsonify({"error": "not_found"}), 404
 
-    return jsonify(_to_detail_dict(p))
+    return jsonify(_to_detail_dict(pokemon))
 
 
 def get_pokemon_by_pokedex(pokedex_number: int) -> tuple[Any, int] | Any:
@@ -135,11 +114,11 @@ def get_pokemon_by_pokedex(pokedex_number: int) -> tuple[Any, int] | Any:
     """
     logger.info("Retrieving Pokemon by Pokédex number...")
 
-    p = Pokemon.query.filter_by(pokedex_number=int(pokedex_number)).first()
-    if not p:
+    pokemon = Pokemon.query.filter_by(pokedex_number=int(pokedex_number)).first()
+    if not pokemon:
         return jsonify({"error": "not_found"}), 404
 
-    return jsonify(_to_detail_dict(p))
+    return jsonify(_to_detail_dict(pokemon))
 
 
 def list_pokemon_by_type() -> Any:
@@ -162,10 +141,10 @@ def list_pokemon_by_type() -> Any:
     wanted = set(req.types)
     matches: list[Pokemon] = []
 
-    for p in Pokemon.query.all():
-        p_types = set(p.types or [])
-        if p_types.intersection(wanted):
-            matches.append(p)
+    for pokemon in Pokemon.query.all():
+        pokemon_types = set(pokemon.types or [])
+        if pokemon_types.intersection(wanted):
+            matches.append(pokemon)
             if len(matches) >= limit:
                 break
     items = [_to_detail_dict(p) for p in matches]
@@ -183,32 +162,34 @@ def delete_pokemon(pokemon_id: str) -> tuple[Any, int]:
     """
     logger.info("Deleting Pokemon...")
 
-    p = Pokemon.query.filter_by(id=pokemon_id).first()
+    pokemon = Pokemon.query.filter_by(id=pokemon_id).first()
 
-    if not p:
+    if not pokemon:
         return jsonify({"error": "not_found"}), 404
 
-    db.session.delete(p)
+    db.session.delete(pokemon)
     db.session.commit()
     return "", 204
 
 
-def register_routes(app: Flask) -> None:
+def register_pokemon_routes() -> None:
     """
-    Register all HTTP endpoints on the provided Flask app instance.
-
-    This function adds URL rules mapping paths to top-level view functions,
-    keeping handlers separated from registration logic.
-
-    :param app: a Flask application instance
+    Register all Pokemon-related routes on the pokemon blueprint.
 
     :return: None
+    :raises: None
     """
-    app.add_url_rule("/ingest", view_func=ingest, methods=["POST"])
-    app.add_url_rule("/add-pokemon", view_func=add_pokemon, methods=["POST"])
-    app.add_url_rule("/pokemon", view_func=list_pokemon, methods=["GET"])
-    app.add_url_rule("/pokemon/id/<pokemon_id>", view_func=get_pokemon_by_id, methods=["GET"])
-    app.add_url_rule("/pokemon/name/<name>", view_func=get_pokemon_by_name, methods=["GET"])
-    app.add_url_rule("/pokemon/pokedex/<int:pokedex_number>", view_func=get_pokemon_by_pokedex, methods=["GET"])
-    app.add_url_rule("/pokemon/by-type", view_func=list_pokemon_by_type, methods=["POST"])
-    app.add_url_rule("/pokemon/<pokemon_id>", view_func=delete_pokemon, methods=["DELETE"])
+    # Official RESTful create/list endpoints
+    pokemon_bp.add_url_rule("", view_func=add_pokemon, methods=["POST"])  # /pokemon
+    pokemon_bp.add_url_rule("", view_func=list_pokemon, methods=["GET"])  # /pokemon
+    # Query endpoints
+    pokemon_bp.add_url_rule("/id/<pokemon_id>", view_func=get_pokemon_by_id, methods=["GET"])
+    pokemon_bp.add_url_rule("/name/<name>", view_func=get_pokemon_by_name, methods=["GET"])
+    pokemon_bp.add_url_rule("/pokedex/<int:pokedex_number>", view_func=get_pokemon_by_pokedex, methods=["GET"])
+    pokemon_bp.add_url_rule("/by-type", view_func=list_pokemon_by_type, methods=["POST"])
+    # Delete endpoint
+    pokemon_bp.add_url_rule("/<pokemon_id>", view_func=delete_pokemon, methods=["DELETE"])
+
+
+# Register routes when module is imported
+register_pokemon_routes()
