@@ -60,10 +60,11 @@ By default the app runs on http://localhost:5000.
 This repository ships with a ready-to-use Docker setup for isolated execution.
 
 Steps:
-1) Copy the env file:
-```
-cp .env.example .env
-```
+1) Copy the env file:  
+   Windows: `copy .env.example .env`  
+   Linux/Mac: `cp .env.example .env`
+
+
 2) Build and start the container:
 ```
 docker compose up --build
