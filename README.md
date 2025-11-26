@@ -15,6 +15,7 @@ Key design decisions (kept intentionally simple):
 - Pydantic for request/response schemas.
 - Global JSON error handlers and request/response logging middlewares.
 - Unit tests included and CI workflow running pytest on push/PR.
+- DB-first ingestion with in-memory caching and a background refresh job to reduce latency and keep data fresh.
 
 
 ## How To Run Locally
@@ -44,17 +45,79 @@ Requirements:
    `pip install -r requirements.txt`
 
 
-6. Run the application  
+6. Configure environment
+   - Copy the example file and adjust values as needed:
+   - The values are available only because this is a test
+   - On normal cases `.env` values should be private
+     - `cp .env.example .env`
+
+7. Run the application  
    `python -m app.main`
 
 By default the app runs on http://localhost:5000.
+
+## Run with Docker
+
+This repository ships with a ready-to-use Docker setup for isolated execution.
+
+Steps:
+1) Copy the env file (optional, recommended):
+```
+cp .env.example .env
+```
+2) Build and start the container:
+```
+docker compose up --build
+```
+3) The API will be available at:
+```
+http://localhost:5000
+```
+
+Notes:
+- Environment variables are loaded from `.env` by docker-compose (env_file). You can tweak cache, sync interval, etc., there.
+- By default inside the container the SQLite DB lives at `sqlite:///instance/pokemon.db`. To persist it on the host, uncomment the `volumes` section in `docker-compose.yaml` and optionally set `SQLALCHEMY_DATABASE_URI=sqlite:///instance/pokemon.db` (already defaulted in the Dockerfile runtime stage).
+- If `SYNC_ON_START=true`, on the first boot the app will ingest the initial CSV list from `app/db/pokemon_list.csv`.
+
+Quick curl examples (while container is running):
+- Healthcheck:
+```
+curl http://localhost:5000/health
+```
+- Ingest a Pokemon:
+```
+curl -X POST http://localhost:5000/pokemon \
+  -H 'Content-Type: application/json' \
+  -d '{"names":["pikachu"]}'
+```
+- List Pokemons (limit 5):
+```
+curl 'http://localhost:5000/pokemon?limit=5'
+```
+- Get by name:
+```
+curl http://localhost:5000/pokemon/name/pikachu
+```
+- Filter by type:
+```
+curl -X POST http://localhost:5000/pokemon/by-type \
+  -H 'Content-Type: application/json' \
+  -d '{"types":["water","ground"]}'
+```
 
 Project structure
 ```
 app/
   main.py                 # Flask app factory and runner
   api/
-    routes.py             # Endpoints: /ingest, /add-pokemon, /pokemon, /pokemon/id/<id>, /pokemon/name/<name>, /pokemon/pokedex/<number>, /pokemon/by-type, DELETE /pokemon/<id>
+    pokemon.py            # Blueprint 'pokemon' (prefix /pokemon):
+                          #   /pokemon (GET, POST)
+                          #   /pokemon/id/<id>
+                          #   /pokemon/name/<name>
+                          #   /pokemon/pokedex/<number>
+                          #   /pokemon/by-type (POST)
+                          #   DELETE /pokemon/<id>
+    health.py             # Blueprint 'health': /health
   models/
     __init__.py
     pokemon.py            # SQLAlchemy model: single-table Pokemon with JSON fields
@@ -74,6 +137,9 @@ app/
     __init__.py           # SQLAlchemy initialization (create_all)
     config.py             # CSV reader utility
     pokemon_list.csv      # Initial seed list of Pokemon names
+Dockerfile                # Multi-stage build (builder + runtime)
+docker-compose.yaml       # Simple compose with web service and env_file mapping
+.dockerignore             # Slim build context
 tests/                    # Unit tests mirroring app/
   conftest.py
   test_api/
@@ -91,12 +157,27 @@ requirements.txt
 README.md
 ```
 
-Configuration
-- SQLALCHEMY_DATABASE_URI: defaults to `sqlite:///pokemon.db` in the project root.
-- POKEAPI_BASE_URL: defaults to `https://pokeapi.co/api/v2`.
+Configuration via .env
+- The app automatically loads `.env` if present (using python-dotenv). All variables are optional and have defaults.
+- Keys you can set:
+  - `SQLALCHEMY_DATABASE_URI` (default `sqlite:///pokemon.db`)
+  - `POKEAPI_BASE_URL` (default `https://pokeapi.co/api/v2`)
+  - `SYNC_ON_START` (default `true`)
+  - `CACHE_TYPE` (default `SimpleCache`)
+  - `CACHE_DEFAULT_TIMEOUT` (default `1800` seconds)
+  - `STALE_TTL_MINUTES` (default `30`)
+  - `DISABLE_BACKGROUND_SYNC` (default `false`)
+  - `SYNC_INTERVAL_MINUTES` (default `30`)
+  - `REFRESH_BATCH_SIZE` (default `20`)
+  
+Tip: For local development when running tests or avoiding network calls, consider setting:
+```
+SYNC_ON_START=false
+DISABLE_BACKGROUND_SYNC=true
+```
 
 Input rule for names (important)
-- When calling POST /ingest or /add-pokemon, always send Pokemon names in lowercase and without any symbols (no spaces, hyphens, dots, etc.).
+- When calling POST /pokemon, always send Pokemon names in lowercase and without any symbols (no spaces, hyphens, dots, etc.).
 - The API normalizes input to this format and uses a built-in alias map to resolve tricky cases to PokeAPI’s canonical slugs (e.g., `mrmime` → `mr-mime`, `mewtwo` → `MewTwo`, `typenull` → `type-null`).
 
 CSV initial load
@@ -113,13 +194,14 @@ kingler
 ```
 
 HTTP endpoints
-- POST /ingest
-  - Body: `{ "names": ["pikachu", "charizard"] }` (optional). If omitted or empty, the CSV is used.
-  - Response: `{ "ok": [...], "not_found": [...], "errors": [{"name": ..., "error": ...}] }`
+- GET /health
+  - Simple healthcheck endpoint. Returns `{ "status": "ok" }`.
 
-- POST /add-pokemon
+- POST /pokemon
   - Body: `{ "names": ["bulbasaur"] }`
-  - Response: same format as /ingest
+  - Behavior: DB-first + cache-first. If the Pokemon already exists in DB and is fresh (not stale by `STALE_TTL_MINUTES`), PokeAPI is not called. Otherwise, it uses cache; on miss, fetches from PokeAPI and caches the raw payload.
+  - Response: `{ "ok": [...], "not_found": [...], "errors": [{"name": ..., "error": ...}] }`
+  - Note: Deprecated alias still available temporarily: `POST /add-pokemon`.
 
 - GET /pokemon
   - Optional query params:
@@ -163,3 +245,12 @@ Tests
 ```
 pytest -q
 ```
+
+Startup sync (replaces /ingest)
+- On application startup, when `SYNC_ON_START=true` (default), the app will read `app/db/pokemon_list.csv` and ingest those Pokemons automatically using the same ingestion flow as the API.
+- Network failures or upstream issues are logged as warnings and do not prevent the application from starting.
+
+Caching and background refresh
+- Caching: the app uses Flask-Caching `SimpleCache` by default. Upstream PokeAPI payloads are cached under keys like `pokeapi:{normalized_name}` for `CACHE_DEFAULT_TIMEOUT` seconds.
+- DB-first: if a requested Pokemon exists in DB and was refreshed within `STALE_TTL_MINUTES`, ingestion skips PokeAPI to reduce latency.
+- Background refresh: an APScheduler BackgroundScheduler runs every `SYNC_INTERVAL_MINUTES` to refresh a small batch (`REFRESH_BATCH_SIZE`) of stale/never-refreshed rows. Set `DISABLE_BACKGROUND_SYNC=true` to disable.
