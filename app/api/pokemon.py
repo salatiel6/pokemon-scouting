@@ -57,9 +57,6 @@ def list_pokemon() -> Any:
     logger.info("Listing Pokemon...")
 
     query = Pokemon.query
-    name_filter = request.args.get("name")
-    if name_filter:
-        query = query.filter(Pokemon.name.ilike(f"%{name_filter}%"))
 
     limit = request.args.get("limit", default=200, type=int)
     if not isinstance(limit, int) or limit <= 0:
