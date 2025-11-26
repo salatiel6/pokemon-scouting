@@ -52,10 +52,56 @@ This is my mental map describing how I used an AI assistant to design and implem
 - After the core app was stable, we added tests mirroring the `app/` structure, covering schemas, sanitizer, PokeAPI client (aliases), ingestion service, and routes (including limit and delete).
 - Finally, I asked for a GitHub Actions workflow to run `pytest` on every push/PR.
 
-## 9) Final result
+## 9) Reviewer feedback and my change plan
+- I received evaluator feedback pointing out: (1) structure could benefit from Blueprints, (2) REST nouns over verbs (e.g., prefer POST /pokemon over /add-pokemon), (3) use .env for all config, (4) avoid calling PokeAPI when data already exists (add DB-first, cache, and ideally background sync), (5) remove the /ingest endpoint (do initial sync on app start), and (6) provide Docker for easier evaluation.
+- I agreed to apply all six points and created a chronological plan: remove /ingest and add startup sync first; then DB-first + cache + background sync; then RESTful routes; then Blueprints; then .env; finally Docker.
+
+## 10) I removed /ingest and synced on startup
+- I deleted the /ingest endpoint and implemented a startup sync controlled by SYNC_ON_START (default true).
+- On boot, the app reads app/db/pokemon_list.csv and ingests the names using the same ingestion flow; failures are logged and do not break startup.
+- This keeps first-run UX smooth and removes an unnecessary operational endpoint.
+
+## 11) I made the routes more RESTful
+- I unified ingestion under POST /pokemon (kept /add-pokemon temporarily as a deprecated alias).
+- I split “get by” into distinct resource paths:
+  - GET /pokemon (list; supports name filter and limit)
+  - GET /pokemon/id/<id>
+  - GET /pokemon/name/<name>
+  - GET /pokemon/pokedex/<number>
+  - POST /pokemon/by-type (union semantics; optional limit)
+  - DELETE /pokemon/<id>
+- All list and get endpoints now return full detail consistently; the list supports limit (default 200).
+
+## 12) I reduced latency with DB-first, caching, and background sync
+- DB-first: on POST /pokemon, if a record exists and is fresh (not stale), I skip PokeAPI.
+- Cache-first: I added Flask-Caching (SimpleCache). Raw PokeAPI payloads are cached for CACHE_DEFAULT_TIMEOUT seconds using keys like pokeapi:{normalized_name}.
+- Freshness: I added a refreshed_at column and a staleness TTL (STALE_TTL_MINUTES) to decide when to refresh.
+- Background sync: I added an APScheduler BackgroundScheduler that periodically refreshes a small batch of stale/never-refreshed rows. It’s configurable via DISABLE_BACKGROUND_SYNC, SYNC_INTERVAL_MINUTES, and REFRESH_BATCH_SIZE.
+- Logs make cache hits/misses and scheduler runs visible.
+
+## 13) I reorganized the API with Blueprints
+- I moved routes into Blueprints by domain: app/api/pokemon.py (prefix /pokemon) and app/api/health.py (/health).
+- I removed the old global register_routes and now register blueprints in app/main.py. This keeps related routes cohesive and makes adding new route files trivial.
+
+## 14) I moved configuration to .env with a typed Settings singleton
+- I created a Settings class (pydantic-settings) to load all required variables from .env/env. All keys are required (no defaults) for production-like discipline.
+- I exposed a lazy singleton (settings) for consistent access across modules and mirrored those values into app.config for extension compatibility.
+- Tests use monkeypatch to override env vars; this validated that the app reads env correctly. An optional fallback path exists if pydantic-settings is unavailable.
+
+## 15) I dockerized the app
+- I added a multi-stage Dockerfile (builder + runtime), a docker-compose.yaml, and a .dockerignore.
+- The runtime uses a non-root user and stores SQLite at /app/instance; envs load from .env via compose.
+- The README documents docker compose up --build and example curl calls.
+
+## 16) Final result
 - Minimal app, easy to run: `python -m app.main`.
 - Single-table model with JSON fields for `stats`, `types`, `abilities` and UUID v4 IDs.
 - Input rule enforced for names and an alias map to make PokeAPI calls reliable.
 - Consistent full-detail responses across list and detail.
 - Centralized error handling and logging middlewares.
 - Tests and CI in place.
+- Startup CSV sync at first-run.
+- Routes are RESTful and cohesive under Blueprints.
+- Configuration comes from .env via a typed Settings singleton
+- Latency reduced via DB-first and in-memory caching; data freshness is maintained with a background scheduler.
+- The app runs locally (python -m app.main) or via Docker (docker compose up --build). Logs, error handlers, and tests help ensure stability.
